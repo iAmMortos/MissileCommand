@@ -2,23 +2,20 @@ import pygame
 import sys
 import random
 
-from missile import Missile
-from explosion import Explosion
+from missileLEGACY import Missile
+from explosionLEGACY import Explosion
 from launcher import Launcher
 import math 
 
-# width = 480
-# height = 480
 
 pygame.init()
-
 pygame.mouse.set_cursor(*pygame.cursors.diamond)
 
-INFO = pygame.display.Info()
-
-
-WIDTH = int(INFO.current_h * 0.5)
-HEIGHT = int(INFO.current_h * 0.5)
+# INFO = pygame.display.Info()
+# WIDTH = int(INFO.current_h * 0.5)
+# HEIGHT = int(INFO.current_h * 0.5)
+WIDTH = 480
+HEIGHT = 480
 
 GROUND_HEIGHT = int(HEIGHT / 15)
 SHELTER_HEIGHT = int(HEIGHT / 10)
@@ -39,56 +36,72 @@ player_missiles = []
 explosion_list = []
 shelter = [True, True, True, True, True, True]
 launcher_list = [Launcher(0), Launcher(1), Launcher(2)]
-#launcher_positions = [30, WIDTH / 2, WIDTH - 30]
 launcher_positions = [WIDTH/9 - half, 5*WIDTH/9 - half, 9*WIDTH/9 - half]
+keys_down = [False, False, False]
 
-colors_list = [pygame.Color(0, 255, 0), pygame.Color(255, 0, 0), pygame.Color(255, 255, 0),
-               pygame.Color(0, 255, 255), pygame.Color(255, 0, 255), pygame.Color(255, 255, 255),
-               pygame.Color(0, 0, 255)]
+# colors_list = [pygame.Color(0, 255, 0), pygame.Color(255, 0, 0), pygame.Color(255, 255, 0),
+#                pygame.Color(0, 255, 255), pygame.Color(255, 0, 255), pygame.Color(255, 255, 255),
+#                pygame.Color(0, 0, 255)]
+
+ENEMY_MISSILE_COLOR = pygame.Color(255, 0, 0)
+ENEMY_MISSILE_TRAIL_COLOR = pygame.Color(127, 0, 0)
+FRIENDLY_MISSILE_COLOR = pygame.Color(0, 255, 0)
+FRIENDLY_MISSILE_TRAIL_COLOR = pygame.Color(0, 127, 0)
+EXPLOSION_COLOR = pygame.Color(255, 0, 255)
 
 
 def draw():
     s.fill((0, 0, 0))
-    w = HEIGHT - SHELTER_HEIGHT
     pygame.draw.rect(s, pygame.Color(255, 255, 0), (0, HEIGHT - GROUND_HEIGHT, WIDTH, GROUND_HEIGHT))
+
+    # LAUNCHERS
     for ss in range(len(launcher_list)):
         pygame.draw.polygon(s, pygame.Color(255, 255, 0),
-                            [(ss * WIDTH / 2 - SHELTER_HEIGHT/2 + GROUND_HEIGHT - (GROUND_HEIGHT * ss), w), (ss * WIDTH / 2 + SHELTER_HEIGHT/2 + GROUND_HEIGHT - (GROUND_HEIGHT * ss), w),
-                             (ss * WIDTH / 2 + SHELTER_HEIGHT + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT), (ss * WIDTH / 2 - SHELTER_HEIGHT + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT)])
+                            [(ss * WIDTH / 2 - SHELTER_HEIGHT/2 + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT - SHELTER_HEIGHT),
+                             (ss * WIDTH / 2 + SHELTER_HEIGHT/2 + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT - SHELTER_HEIGHT),
+                             (ss * WIDTH / 2 + SHELTER_HEIGHT + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT),
+                             (ss * WIDTH / 2 - SHELTER_HEIGHT + GROUND_HEIGHT - (GROUND_HEIGHT * ss), HEIGHT)])
         counter = launcher_list[ss].ammo
         number = 1
         while counter > 0:
             for j in range(number):
-                pygame.draw.ellipse(s, (0, 0, 255), (launcher_positions[ss] - ((number - 2 * j) * WIDTH/100) + WIDTH/200, HEIGHT - SHELTER_HEIGHT + ((number-1) * WIDTH/100), WIDTH/100, WIDTH/100))
+                pygame.draw.ellipse(s, (0, 0, 255),
+                                    (launcher_positions[ss] - ((number - 2 * j) * WIDTH/100) + WIDTH/200,
+                                     HEIGHT - SHELTER_HEIGHT + ((number-1) * WIDTH/100),
+                                     WIDTH/100,
+                                     WIDTH/100))
                 counter = counter-1
                 if counter == 0:
                     break
             number = number+1
+
+    # SHELTERS
     launcher_pos = 1
     for i in range(len(shelter)):
         if shelter[i]:
             pygame.draw.rect(s, pygame.Color(0, 0, 255), ((i+launcher_pos) * WIDTH/9 + SHELTER_HEIGHT/4, HEIGHT - GROUND_HEIGHT*1.2, SHELTER_HEIGHT/2, SHELTER_HEIGHT/3))
         if (i + 1) % 3 == 0:
             launcher_pos = launcher_pos+1
-        
+
+    # PLAYER MISSILES
     for p in player_missiles:
-        pygame.draw.line(s, pygame.Color(0, 255, 0), (p.start_x, p.start_y), (p.current_x, p.current_y), 1)
-        pygame.draw.ellipse(s, random.choice(colors_list),
-                            (p.current_x-1.5, p.current_y-1.5, 4, 4), 0)
-        col = random.choice(colors_list)
+        pygame.draw.line(s, FRIENDLY_MISSILE_TRAIL_COLOR, (p.start_x, p.start_y), (p.current_x, p.current_y), 1)
+        pygame.draw.ellipse(s, FRIENDLY_MISSILE_COLOR, (p.current_x-1.5, p.current_y-1.5, 4, 4), 0)
+        col = FRIENDLY_MISSILE_COLOR
         pygame.draw.line(s, col, (p.end_x-5, p.end_y-5),
                          (p.end_x+5, p.end_y+5), 1)
         pygame.draw.line(s, col, (p.end_x+5, p.end_y-5),
                          (p.end_x-5, p.end_y+5), 1)
         p.move()
-        
+
+    # ENEMY MISSILES
     for p in enemy_missiles:
-        pygame.draw.line(s, pygame.Color(255, 0, 0), (p.start_x, p.start_y), (p.current_x, p.current_y), 1)
-        pygame.draw.ellipse(s, random.choice(colors_list),
-                            (p.current_x-1.5, p.current_y-1.5, 4, 4), 0)
+        pygame.draw.line(s, ENEMY_MISSILE_TRAIL_COLOR, (p.start_x, p.start_y), (p.current_x, p.current_y), 1)
+        pygame.draw.ellipse(s, ENEMY_MISSILE_COLOR, (p.current_x-1.5, p.current_y-1.5, 4, 4), 0)
 
         p.move()
-        
+
+    # EXPLOSIONS
     for w in explosion_list:
         if w.expires:
             w.frame -= 2
@@ -100,8 +113,7 @@ def draw():
             w.expires = True
         else:
             w.frame += 1
-        pygame.draw.ellipse(s, random.choice(colors_list),
-                            (w.poz_x-w.frame/60, w.poz_y-w.frame/60, w.frame/30, w.frame/30), 0)
+        pygame.draw.ellipse(s, EXPLOSION_COLOR, (w.poz_x-w.frame/60, w.poz_y-w.frame/60, w.frame/30, w.frame/30), 0)
         
     pygame.display.update()
 
@@ -135,19 +147,24 @@ def designate_launcher(x, y):
     return minimum_x
 
 
-def launch_rocket(x, y):
+def launch_rocket(x, y, launcher=None):
     if y > HEIGHT-SHELTER_HEIGHT*1.4:
         return
-    
-    launcher_position = designate_launcher(x, y)
-    if launcher_position == launcher_positions[0]:
+
+    if launcher is not None:
+        launcher_position = launcher_positions[launcher]
+    else:
+        launcher_position = designate_launcher(x, y)
+
+    if launcher_position == launcher_positions[0] and launcher_list[0].ammo > 0:
         launcher_list[0].ammo -= 1
-    elif launcher_position == launcher_positions[1]:
+    elif launcher_position == launcher_positions[1] and launcher_list[1].ammo > 0:
         launcher_list[1].ammo -= 1
-    elif launcher_position == launcher_positions[2]:
+    elif launcher_position == launcher_positions[2] and launcher_list[2].ammo > 0:
         launcher_list[2].ammo -= 1
     else:
         return
+
     player_missiles.append(Missile(launcher_position, HEIGHT - SHELTER_HEIGHT, x, y, 0.2, 0))
 
 
@@ -174,6 +191,7 @@ def collision():
                 player_missiles.remove(p)
                 del p
                 break
+
     for p in enemy_missiles:
         if p.current_y-p.end_y > -0.1:
             temp = Explosion(p.current_x, p.current_y)
@@ -225,9 +243,8 @@ def new_level():
 
 
 def lose():
-    for i in shelter:
-        if i:
-            return
+    if True in shelter:
+        return
     del explosion_list[:]
     del player_missiles[:]
     del enemy_missiles[:]
@@ -267,13 +284,34 @@ def main():
         collision()
         draw()
         new_level()
+        keys_pressed = pygame.key.get_pressed()
+
+        x, y = pygame.mouse.get_pos()
+
+        if keys_pressed[pygame.K_1] and not keys_down[0]:
+            launch_rocket(x, y, 0)
+            keys_down[0] = True
+        elif not keys_pressed[pygame.K_1]:
+            keys_down[0] = False
+
+        if keys_pressed[pygame.K_2] and not keys_down[1]:
+            launch_rocket(x, y, 1)
+            keys_down[1] = True
+        elif not keys_pressed[pygame.K_2]:
+            keys_down[1] = False
+
+        if keys_pressed[pygame.K_3] and not keys_down[2]:
+            launch_rocket(x, y, 2)
+            keys_down[2] = True
+        elif not keys_pressed[pygame.K_3]:
+            keys_down[2] = False
+
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 sys.exit(0)
             elif e.type == pygame.MOUSEBUTTONDOWN:
-                x, y = pygame.mouse.get_pos()
                 launch_rocket(x, y)
-        #clock.tick(100)
+        clock.tick(500)
 
 
 main()
